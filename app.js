@@ -1,5 +1,7 @@
+// High-contrast ASCII set
 const ASCII_CHARS = "@%#*+=-:. ";
 const S = String.fromCharCode(0xA7);
+const ZW = "\u200C"; // U+200C Zero-Width Non-Joiner
 
 // Minecraft chat color RGB values
 const MC_RGB = {
@@ -30,14 +32,11 @@ function nearestMinecraftColor(r, g, b) {
   return best;
 }
 
-// Safe 3-cluster (never returns empty clusters)
+// Safe 3-cluster
 function cluster3(pixels) {
   if (pixels.length < 3) {
-    return [
-      pixels[0] || {r:255,g:255,b:255},
-      pixels[0] || {r:255,g:255,b:255},
-      pixels[0] || {r:255,g:255,b:255}
-    ];
+    const p = pixels[0] || {r:255,g:255,b:255};
+    return [p, p, p];
   }
 
   let centers = [
@@ -101,13 +100,20 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
 
     for (let x = 0; x < width; x++) {
       const i = (srcY * width + x) * 4;
-      const r = data[i], g = data[i+1], b = data[i+2];
+      let r = data[i], g = data[i+1], b = data[i+2];
+
+      // Palette influence: B&W vs Color
+      if (palette === "Black & White") {
+        const gray = 0.299*r + 0.587*g + 0.114*b;
+        r = g = b = gray;
+      }
+
       const gray = 0.299*r + 0.587*g + 0.114*b;
       chars.push(pixelToChar(gray));
       rowPixels.push({ r, g, b, x });
     }
 
-    // JAVA MODE — full per-character color
+    // JAVA MODE — per-character color, no ZW
     if (mode === "java") {
       let row = "", last = null;
       for (let i = 0; i < width; i++) {
@@ -120,10 +126,12 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
       continue;
     }
 
-    // BEDROCK MODE — adaptive 3-color segmentation
-    const centers = cluster3(rowPixels);
-    const mcColors = centers.map(c => nearestMinecraftColor(c.r, c.g, c.b));
+    // BEDROCK MODE — 3 clusters → 2 colors, width-safe
 
+    // 1) Cluster into 3
+    const centers = cluster3(rowPixels);
+
+    // 2) Assign each pixel to nearest center
     const assignments = rowPixels.map(p => {
       let best = 0, bestDist = Infinity;
       for (let i = 0; i < 3; i++) {
@@ -135,55 +143,110 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
       return best;
     });
 
-    // Build adaptive regions
-    const regions = [];
-    let start = 0;
-    for (let i = 1; i < width; i++) {
-      if (assignments[i] !== assignments[i-1]) {
-        regions.push({ start, end: i-1, cluster: assignments[i-1] });
-        start = i;
+    // 3) Keep the two most different clusters (K4)
+    function dist2(a, b) {
+      return (a.r-b.r)**2 + (a.g-b.g)**2 + (a.b-b.b)**2;
+    }
+    const d01 = dist2(centers[0], centers[1]);
+    const d02 = dist2(centers[0], centers[2]);
+    const d12 = dist2(centers[1], centers[2]);
+
+    let keepA = 0, keepB = 1, drop = 2;
+    let maxD = d01;
+    if (d02 > maxD) { maxD = d02; keepA = 0; keepB = 2; drop = 1; }
+    if (d12 > maxD) { maxD = d12; keepA = 1; keepB = 2; drop = 0; }
+
+    // 4) Map dropped cluster to farthest remaining color (D2)
+    const labels = assignments.map(a => {
+      if (a === drop) {
+        const dA = dist2(centers[a], centers[keepA]);
+        const dB = dist2(centers[a], centers[keepB]);
+        return dA > dB ? keepA : keepB;
+      }
+      return a;
+    });
+
+    // 5) Recompute colors for keepA/keepB
+    function avgColorFor(label) {
+      const pts = rowPixels.filter((_, idx) => labels[idx] === label);
+      if (pts.length === 0) return { r:255, g:255, b:255 };
+      const sum = pts.reduce((a, p) => ({
+        r: a.r + p.r, g: a.g + p.g, b: a.b + p.b
+      }), {r:0,g:0,b:0});
+      return {
+        r: sum.r / pts.length,
+        g: sum.g / pts.length,
+        b: sum.b / pts.length
+      };
+    }
+
+    const colA = avgColorFor(keepA);
+    const colB = avgColorFor(keepB);
+    const codeA = nearestMinecraftColor(colA.r, colA.g, colA.b);
+    const codeB = nearestMinecraftColor(colB.r, colB.g, colB.b);
+
+    // 6) Find best split index: left = A, right = B (2 regions, 2 codes)
+    // split is number of chars in left region (0..width)
+    let bestSplit = 0;
+    let bestCost = Infinity;
+    for (let split = 0; split <= width; split++) {
+      let cost = 0;
+      for (let i = 0; i < split; i++) {
+        if (labels[i] !== keepA) cost++;
+      }
+      for (let i = split; i < width; i++) {
+        if (labels[i] !== keepB) cost++;
+      }
+      if (cost < bestCost) {
+        bestCost = cost;
+        bestSplit = split;
       }
     }
-    regions.push({ start, end: width-1, cluster: assignments[width-1] });
 
-    // Guarantee exactly 3 regions
-    while (regions.length > 3) {
-      let smallest = 0;
-      for (let i = 1; i < regions.length; i++) {
-        if ((regions[i].end - regions[i].start) <
-            (regions[smallest].end - regions[smallest].start)) smallest = i;
-      }
-      if (smallest > 0) regions[smallest-1].end = regions[smallest].end;
-      else regions[1].start = regions[0].start;
-      regions.splice(smallest, 1);
-    }
-
-    // Build Bedrock row with § codes
+    // 7) Build Bedrock row: 2 color codes, ZW between every visible char
     let row = "";
-    for (const reg of regions) {
-      row += S + mcColors[reg.cluster];
-      for (let i = reg.start; i <= reg.end; i++) row += chars[i];
+
+    // Left region (A)
+    row += S + codeA;
+    for (let i = 0; i < bestSplit; i++) {
+      row += chars[i];
+      if (i < bestSplit - 1) row += ZW;
     }
+
+    // Right region (B)
+    if (bestSplit < width) {
+      row += S + codeB;
+      for (let i = bestSplit; i < width; i++) {
+        row += chars[i];
+        if (i < width - 1) row += ZW;
+      }
+    }
+
     lines.push(row);
   }
 
   return lines;
 }
 
-// Color preview for both Java and Bedrock
+// Color preview for both Java and Bedrock (ignores ZW)
 function renderPreview(lines) {
   let html = "";
   for (const line of lines) {
     let color = "#FFFFFF";
     let out = "";
     for (let i = 0; i < line.length; i++) {
-      if (line[i] === S && i+1 < line.length) {
+      const ch = line[i];
+      if (ch === ZW) {
+        // skip zero-width
+        continue;
+      }
+      if (ch === S && i+1 < line.length) {
         const code = line[i+1].toLowerCase();
         const rgb = MC_RGB[code] || [255,255,255];
         color = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
         i++;
       } else {
-        out += `<span style="color:${color}">${line[i]}</span>`;
+        out += `<span style="color:${color}">${ch}</span>`;
       }
     }
     html += out + "<br>";
