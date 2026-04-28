@@ -34,110 +34,38 @@ function pixelToColorCode(v, paletteKey) {
   return colors[Math.round((v / 255) * (colors.length - 1))];
 }
 
-// HARD COMPRESSION: reduce color transitions
-function compressColorRuns(colorRow, threshold = 18) {
-  const compressed = [colorRow[0]];
+// HARD COMPRESSION + MAX 2 TRANSITIONS
+function compressToThreeZones(colors) {
+  const numeric = colors.map(c => parseInt(c, 16));
 
-  for (let i = 1; i < colorRow.length; i++) {
-    const prev = parseInt(compressed[compressed.length - 1], 16);
-    const curr = parseInt(colorRow[i], 16);
+  const min = Math.min(...numeric);
+  const max = Math.max(...numeric);
+  const mid = Math.round((min + max) / 2);
 
-    if (Math.abs(prev - curr) >= threshold) {
-      compressed.push(colorRow[i]);
-    } else {
-      compressed.push(compressed[compressed.length - 1]);
+  return numeric.map(v => {
+    if (v < mid - 1) return min.toString(16);
+    if (v > mid + 1) return max.toString(16);
+    return mid.toString(16);
+  });
+}
+
+function enforceMaxTransitions(colors, maxTransitions = 2) {
+  let transitions = 0;
+  let last = colors[0];
+
+  for (let i = 1; i < colors.length; i++) {
+    if (colors[i] !== last) {
+      transitions++;
+      if (transitions > maxTransitions) {
+        colors[i] = last;
+      } else {
+        last = colors[i];
+      }
     }
   }
 
-  return compressed;
+  return colors;
 }
 
 async function imageToAscii(file, width, height, stretchHeight, palette) {
-  const img = new Image();
-  img.src = URL.createObjectURL(file);
-
-  await new Promise((resolve, reject) => {
-    img.onload = resolve;
-    img.onerror = reject;
-  });
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = stretchHeight;
-  const ctx = canvas.getContext("2d");
-
-  ctx.drawImage(img, 0, 0, width, stretchHeight);
-  const data = ctx.getImageData(0, 0, width, stretchHeight).data;
-
-  const lines = [];
-
-  for (let y = 0; y < height; y++) {
-    const srcY = Math.floor((y / height) * stretchHeight);
-
-    let chars = [];
-    let colors = [];
-
-    for (let x = 0; x < width; x++) {
-      const i = (srcY * width + x) * 4;
-      const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-
-      chars.push(pixelToChar(gray));
-      colors.push(pixelToColorCode(gray, palette));
-    }
-
-    // HARD COMPRESSION APPLIED HERE
-    colors = compressColorRuns(colors);
-
-    let row = "";
-    let lastColor = null;
-
-    for (let i = 0; i < width; i++) {
-      if (colors[i] !== lastColor) {
-        row += S + colors[i];
-        lastColor = colors[i];
-      }
-      row += chars[i];
-    }
-
-    lines.push(row);
-  }
-
-  return lines;
-}
-
-function renderPreview(lines) {
-  let html = "";
-
-  for (const line of lines) {
-    let currentColor = "#FFFFFF";
-    let out = "";
-
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === S && i + 1 < line.length) {
-        const code = line[i + 1].toLowerCase();
-        currentColor = COLOR_MAP[code] || "#FFFFFF";
-        i++;
-      } else {
-        out += `<span style="color:${currentColor}">${line[i]}</span>`;
-      }
-    }
-
-    html += out + "<br>";
-  }
-
-  return html;
-}
-
-document.getElementById("convertBtn").onclick = async () => {
-  const file = document.getElementById("fileInput").files[0];
-  if (!file) return;
-
-  const palette = document.getElementById("palette").value;
-  const mode = document.getElementById("mode").value;
-  const { width, height, stretchHeight } = getDimensions(mode);
-
-  const ascii = await imageToAscii(file, width, height, stretchHeight, palette);
-
-  document.getElementById("output").textContent = ascii.join("\n");
-  document.getElementById("preview").innerHTML = renderPreview(ascii);
-};
+  const img =
