@@ -1,7 +1,7 @@
 const ASCII_CHARS = "@%#*+=-:. ";
-const S = "\u00A7";
+const S = "\u00A7"; // ALWAYS use Unicode escape
 
-// Minecraft color palettes (dark → light)
+// Palettes (dark → light)
 const PALETTES = {
   bw:   ["0", "f"],
   gray: ["0", "8", "7", "f"],
@@ -10,35 +10,21 @@ const PALETTES = {
   cool: ["1", "3", "9", "b", "f"]
 };
 
-// Browser color equivalents for preview
+// Browser preview colors
 const COLOR_MAP = {
-  "0": "#000000",
-  "1": "#0000AA",
-  "2": "#00AA00",
-  "3": "#00AAAA",
-  "4": "#AA0000",
-  "5": "#AA00AA",
-  "6": "#FFAA00",
-  "7": "#AAAAAA",
-  "8": "#555555",
-  "9": "#5555FF",
-  "a": "#55FF55",
-  "b": "#55FFFF",
-  "c": "#FF5555",
-  "d": "#FF55FF",
-  "e": "#FFFF55",
-  "f": "#FFFFFF"
+  "0": "#000000", "1": "#0000AA", "2": "#00AA00", "3": "#00AAAA",
+  "4": "#AA0000", "5": "#AA00AA", "6": "#FFAA00", "7": "#AAAAAA",
+  "8": "#555555", "9": "#5555FF", "a": "#55FF55", "b": "#55FFFF",
+  "c": "#FF5555", "d": "#FF55FF", "e": "#FFFF55", "f": "#FFFFFF"
 };
 
 function pixelToChar(v) {
-  const idx = Math.round((v / 255) * (ASCII_CHARS.length - 1));
-  return ASCII_CHARS[idx];
+  return ASCII_CHARS[Math.round((v / 255) * (ASCII_CHARS.length - 1))];
 }
 
 function pixelToColorCode(v, paletteKey) {
-  const colors = PALETTES[paletteKey] || PALETTES.bw;
-  const idx = Math.round((v / 255) * (colors.length - 1));
-  return colors[idx];
+  const colors = PALETTES[paletteKey];
+  return colors[Math.round((v / 255) * (colors.length - 1))];
 }
 
 async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
@@ -66,17 +52,13 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
 
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-
-      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+      const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
 
       const char = pixelToChar(gray);
       const colorCode = pixelToColorCode(gray, palette);
 
       if (colorCode !== lastColor) {
-        row += S + colorCode;
+        row += S + colorCode;   // GUARANTEED § output
         lastColor = colorCode;
       }
 
@@ -89,11 +71,10 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
   return lines;
 }
 
-// Convert § codes into HTML spans for preview
-function renderPreview(asciiLines) {
+function renderPreview(lines) {
   let html = "";
 
-  asciiLines.forEach(line => {
+  for (const line of lines) {
     let currentColor = "#FFFFFF";
     let out = "";
 
@@ -101,14 +82,14 @@ function renderPreview(asciiLines) {
       if (line[i] === S && i + 1 < line.length) {
         const code = line[i + 1].toLowerCase();
         currentColor = COLOR_MAP[code] || "#FFFFFF";
-        i++; // skip color code
+        i++;
       } else {
         out += `<span style="color:${currentColor}">${line[i]}</span>`;
       }
     }
 
     html += out + "<br>";
-  });
+  }
 
   return html;
 }
@@ -119,17 +100,8 @@ document.getElementById("convertBtn").onclick = async () => {
 
   const palette = document.getElementById("palette").value;
 
-  try {
-    const ascii = await imageToAscii(file, 113, 14, palette);
+  const ascii = await imageToAscii(file, 113, 14, palette);
 
-    // Raw Minecraft output
-    document.getElementById("output").textContent = ascii.join("\n");
-
-    // Live colored preview
-    document.getElementById("preview").innerHTML = renderPreview(ascii);
-
-  } catch (e) {
-    document.getElementById("output").textContent = "Error processing image.";
-    console.error(e);
-  }
+  document.getElementById("output").textContent = ascii.join("\n");
+  document.getElementById("preview").innerHTML = renderPreview(ascii);
 };
