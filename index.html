@@ -9,7 +9,7 @@
       font-family: Consolas, "Courier New", monospace;
       padding: 20px;
     }
-    #output {
+    #output, #preview {
       white-space: pre-wrap;
       border: 1px solid #ccc;
       padding: 10px;
@@ -17,7 +17,10 @@
       font-family: Consolas, "Courier New", monospace;
       font-size: 12px;
       line-height: 1.1;
-      unicode-bidi: plaintext; /* forces literal § rendering */
+    }
+    #preview {
+      background: #222;
+      color: white;
     }
     label {
       margin-left: 10px;
@@ -40,7 +43,11 @@
   <option value="cool">Cool Tones</option>
 </select>
 
+<h3>Minecraft Output (copy this into your book)</h3>
 <div id="output"></div>
+
+<h3>Live Color Preview</h3>
+<div id="preview"></div>
 
 <script src="app.js"></script>
 </body>
