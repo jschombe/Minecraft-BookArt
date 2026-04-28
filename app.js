@@ -19,9 +19,10 @@ const COLOR_MAP = {
 };
 
 function getDimensions(mode) {
-  return mode === "bedrock"
-    ? { width: 16, height: 13 }
-    : { width: 113, height: 14 };
+  if (mode === "bedrock") {
+    return { width: 16, height: 13, stretchHeight: 17 }; // stretch for Bedrock
+  }
+  return { width: 113, height: 14, stretchHeight: 14 }; // Java unchanged
 }
 
 function pixelToChar(v) {
@@ -33,7 +34,7 @@ function pixelToColorCode(v, paletteKey) {
   return colors[Math.round((v / 255) * (colors.length - 1))];
 }
 
-async function imageToAscii(file, width, height, palette) {
+async function imageToAscii(file, width, height, stretchHeight, palette) {
   const img = new Image();
   img.src = URL.createObjectURL(file);
 
@@ -42,22 +43,25 @@ async function imageToAscii(file, width, height, palette) {
     img.onerror = reject;
   });
 
+  // Pre-stretch canvas for Bedrock
   const canvas = document.createElement("canvas");
   canvas.width = width;
-  canvas.height = height;
+  canvas.height = stretchHeight;
   const ctx = canvas.getContext("2d");
 
-  ctx.drawImage(img, 0, 0, width, height);
-  const data = ctx.getImageData(0, 0, width, height).data;
+  // Stretch vertically
+  ctx.drawImage(img, 0, 0, width, stretchHeight);
+  const data = ctx.getImageData(0, 0, width, stretchHeight).data;
 
-  let lines = [];
-
+  // Now compress back to 13 rows
+  const lines = [];
   for (let y = 0; y < height; y++) {
+    const srcY = Math.floor((y / height) * stretchHeight);
     let row = "";
     let lastColor = null;
 
     for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
+      const i = (srcY * width + x) * 4;
       const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
 
       const char = pixelToChar(gray);
@@ -106,10 +110,8 @@ document.getElementById("convertBtn").onclick = async () => {
 
   const palette = document.getElementById("palette").value;
   const mode = document.getElementById("mode").value;
-  const { width, height } = getDimensions(mode);
+  const { width, height, stretchHeight } = getDimensions(mode);
 
-  const ascii = await imageToAscii(file, width, height, palette);
+  const ascii = await imageToAscii(file, width, height, stretchHeight, palette);
 
-  document.getElementById("output").textContent = ascii.join("\n");
-  document.getElementById("preview").innerHTML = renderPreview(ascii);
-};
+  document.getElementById("output").text
