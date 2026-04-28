@@ -20,9 +20,9 @@ const COLOR_MAP = {
 
 function getDimensions(mode) {
   if (mode === "bedrock") {
-    return { width: 16, height: 13, stretchHeight: 17 };
+    return { width: 16, height: 13, stretchHeight: 13 }; // simple, no aspect tricks
   }
-  return { width: 113, height: 14, stretchHeight: 14 };
+  return { width: 113, height: 14, stretchHeight: 14 }; // Java
 }
 
 function pixelToChar(v) {
@@ -30,42 +30,99 @@ function pixelToChar(v) {
 }
 
 function pixelToColorCode(v, paletteKey) {
-  const colors = PALETTES[paletteKey];
+  const colors = PALETTES[paletteKey] || PALETTES.bw;
   return colors[Math.round((v / 255) * (colors.length - 1))];
 }
 
-// HARD COMPRESSION + MAX 2 TRANSITIONS
-function compressToThreeZones(colors) {
-  const numeric = colors.map(c => parseInt(c, 16));
+async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
 
-  const min = Math.min(...numeric);
-  const max = Math.max(...numeric);
-  const mid = Math.round((min + max) / 2);
-
-  return numeric.map(v => {
-    if (v < mid - 1) return min.toString(16);
-    if (v > mid + 1) return max.toString(16);
-    return mid.toString(16);
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
   });
-}
 
-function enforceMaxTransitions(colors, maxTransitions = 2) {
-  let transitions = 0;
-  let last = colors[0];
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = stretchHeight;
+  const ctx = canvas.getContext("2d");
 
-  for (let i = 1; i < colors.length; i++) {
-    if (colors[i] !== last) {
-      transitions++;
-      if (transitions > maxTransitions) {
-        colors[i] = last;
+  ctx.drawImage(img, 0, 0, width, stretchHeight);
+  const data = ctx.getImageData(0, 0, width, stretchHeight).data;
+
+  const lines = [];
+
+  for (let y = 0; y < height; y++) {
+    const srcY = Math.floor((y / height) * stretchHeight);
+
+    let row = "";
+    let lastColor = null;
+
+    for (let x = 0; x < width; x++) {
+      const i = (srcY * width + x) * 4;
+      const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+
+      const ch = pixelToChar(gray);
+
+      if (mode === "java") {
+        const colorCode = pixelToColorCode(gray, palette);
+        if (colorCode !== lastColor) {
+          row += S + colorCode;
+          lastColor = colorCode;
+        }
+        row += ch;
       } else {
-        last = colors[i];
+        // Bedrock: plain ASCII only, no § codes
+        row += ch;
       }
     }
+
+    lines.push(row);
   }
 
-  return colors;
+  return lines;
 }
 
-async function imageToAscii(file, width, height, stretchHeight, palette) {
-  const img =
+function renderPreview(lines, mode) {
+  if (mode === "bedrock") {
+    // Plain ASCII preview
+    return lines.join("<br>");
+  }
+
+  // Java: colored preview
+  let html = "";
+
+  for (const line of lines) {
+    let currentColor = "#FFFFFF";
+    let out = "";
+
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === S && i + 1 < line.length) {
+        const code = line[i + 1].toLowerCase();
+        currentColor = COLOR_MAP[code] || "#FFFFFF";
+        i++;
+      } else {
+        out += `<span style="color:${currentColor}">${line[i]}</span>`;
+      }
+    }
+
+    html += out + "<br>";
+  }
+
+  return html;
+}
+
+document.getElementById("convertBtn").onclick = async () => {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) return;
+
+  const palette = document.getElementById("palette").value;
+  const mode = document.getElementById("mode").value;
+  const { width, height, stretchHeight } = getDimensions(mode);
+
+  const ascii = await imageToAscii(file, width, height, stretchHeight, palette, mode);
+
+  document.getElementById("output").textContent = ascii.join("\n");
+  document.getElementById("preview").innerHTML = renderPreview(ascii, mode);
+};
