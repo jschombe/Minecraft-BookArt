@@ -20,9 +20,9 @@ const COLOR_MAP = {
 
 function getDimensions(mode) {
   if (mode === "bedrock") {
-    return { width: 16, height: 13, stretchHeight: 17 }; // stretch for Bedrock
+    return { width: 16, height: 13, stretchHeight: 17 };
   }
-  return { width: 113, height: 14, stretchHeight: 14 }; // Java unchanged
+  return { width: 113, height: 14, stretchHeight: 14 };
 }
 
 function pixelToChar(v) {
@@ -34,6 +34,24 @@ function pixelToColorCode(v, paletteKey) {
   return colors[Math.round((v / 255) * (colors.length - 1))];
 }
 
+// HARD COMPRESSION: reduce color transitions
+function compressColorRuns(colorRow, threshold = 18) {
+  const compressed = [colorRow[0]];
+
+  for (let i = 1; i < colorRow.length; i++) {
+    const prev = parseInt(compressed[compressed.length - 1], 16);
+    const curr = parseInt(colorRow[i], 16);
+
+    if (Math.abs(prev - curr) >= threshold) {
+      compressed.push(colorRow[i]);
+    } else {
+      compressed.push(compressed[compressed.length - 1]);
+    }
+  }
+
+  return compressed;
+}
+
 async function imageToAscii(file, width, height, stretchHeight, palette) {
   const img = new Image();
   img.src = URL.createObjectURL(file);
@@ -43,36 +61,42 @@ async function imageToAscii(file, width, height, stretchHeight, palette) {
     img.onerror = reject;
   });
 
-  // Pre-stretch canvas for Bedrock
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = stretchHeight;
   const ctx = canvas.getContext("2d");
 
-  // Stretch vertically
   ctx.drawImage(img, 0, 0, width, stretchHeight);
   const data = ctx.getImageData(0, 0, width, stretchHeight).data;
 
-  // Now compress back to 13 rows
   const lines = [];
+
   for (let y = 0; y < height; y++) {
     const srcY = Math.floor((y / height) * stretchHeight);
-    let row = "";
-    let lastColor = null;
+
+    let chars = [];
+    let colors = [];
 
     for (let x = 0; x < width; x++) {
       const i = (srcY * width + x) * 4;
       const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
 
-      const char = pixelToChar(gray);
-      const colorCode = pixelToColorCode(gray, palette);
+      chars.push(pixelToChar(gray));
+      colors.push(pixelToColorCode(gray, palette));
+    }
 
-      if (colorCode !== lastColor) {
-        row += S + colorCode;
-        lastColor = colorCode;
+    // HARD COMPRESSION APPLIED HERE
+    colors = compressColorRuns(colors);
+
+    let row = "";
+    let lastColor = null;
+
+    for (let i = 0; i < width; i++) {
+      if (colors[i] !== lastColor) {
+        row += S + colors[i];
+        lastColor = colors[i];
       }
-
-      row += char;
+      row += chars[i];
     }
 
     lines.push(row);
@@ -114,4 +138,6 @@ document.getElementById("convertBtn").onclick = async () => {
 
   const ascii = await imageToAscii(file, width, height, stretchHeight, palette);
 
-  document.getElementById("output").text
+  document.getElementById("output").textContent = ascii.join("\n");
+  document.getElementById("preview").innerHTML = renderPreview(ascii);
+};
