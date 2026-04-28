@@ -1,60 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <title>Minecraft Book ASCII Converter</title>
+  <title>Minecraft ASCII Converter</title>
   <style>
-    body {
-      font-family: Consolas, "Courier New", monospace;
-      padding: 20px;
-    }
-    #output, #preview {
-      white-space: pre-wrap;
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-top: 20px;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 12px;
-      line-height: 1.1;
-    }
-    #preview {
-      background: #222;
-      color: white;
-    }
-    label {
-      margin-left: 10px;
-    }
+    body { font-family: sans-serif; background:#111; color:#eee; }
+    .row { margin-bottom: 8px; }
+    #preview { background:#222; padding:8px; margin-top:8px; line-height:1; }
+    #output { width:100%; height:200px; margin-top:8px; }
+    label { margin-right:8px; }
   </style>
 </head>
 <body>
+  <h1>Minecraft ASCII Converter</h1>
 
-<h2>Image → ASCII (Minecraft Book)</h2>
+  <div class="row">
+    <label for="fileInput">Image:</label>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
 
-<input type="file" id="fileInput" accept="image/*">
-<button id="convertBtn">Convert</button>
+  <div class="row">
+    <label for="palette">Palette:</label>
+    <select id="palette">
+      <option value="Color">Color</option>
+      <option value="Black &amp; White">Black &amp; White</option>
+    </select>
 
-<label for="palette">Color Palette:</label>
-<select id="palette">
-  <option value="bw">Black & White</option>
-  <option value="gray">Grayscale</option>
-  <option value="vivid">Vivid Colors</option>
-  <option value="warm">Warm Tones</option>
-  <option value="cool">Cool Tones</option>
-</select>
+    <label for="mode">Mode:</label>
+    <select id="mode">
+      <option value="bedrock">Bedrock</option>
+      <option value="java">Java</option>
+    </select>
 
-<label for="mode">Edition:</label>
-<select id="mode">
-  <option value="java">Java (113×14, full color)</option>
-  <option value="bedrock">Bedrock (16×13, 3‑color adaptive)</option>
-</select>
+    <button id="convertBtn">Convert</button>
+  </div>
 
-<h3>Minecraft Output (copy this into your book)</h3>
-<div id="output"></div>
+  <h2>Preview</h2>
+  <div id="preview"></div>
 
-<h3>Live Color Preview</h3>
-<div id="preview"></div>
+  <h2>Raw Output</h2>
+  <textarea id="output" readonly></textarea>
 
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
