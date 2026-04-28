@@ -101,7 +101,10 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
     const safeChars = chars.slice(0, maxVisible).join("");
 
     // 5) Build final Bedrock-safe line
-    const row = S + code + safeChars;
+    let row = S + code + safeChars;
+
+    // Hard enforce <16 chars
+    row = row.slice(0, 15);
 
     lines.push(row);
   }
