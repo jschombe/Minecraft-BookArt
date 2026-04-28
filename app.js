@@ -1,5 +1,7 @@
 const ASCII_CHARS = "@%#*+=-:. ";
-const S = "\u00A7"; // ALWAYS use Unicode escape
+
+// FORCE the section sign using raw byte, not Unicode
+const S = String.fromCharCode(0xA7);
 
 // Palettes (dark → light)
 const PALETTES = {
@@ -58,7 +60,7 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
       const colorCode = pixelToColorCode(gray, palette);
 
       if (colorCode !== lastColor) {
-        row += S + colorCode;   // GUARANTEED § output
+        row += S + colorCode;   // GUARANTEED section sign
         lastColor = colorCode;
       }
 
