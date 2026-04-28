@@ -1,9 +1,7 @@
 const ASCII_CHARS = "@%#*+=-:. ";
-
-// Minecraft section sign (ALWAYS use Unicode escape)
 const S = "\u00A7";
 
-// Palettes store only the color code (0–9, a–f)
+// Minecraft color palettes (dark → light)
 const PALETTES = {
   bw:   ["0", "f"],
   gray: ["0", "8", "7", "f"],
@@ -12,17 +10,35 @@ const PALETTES = {
   cool: ["1", "3", "9", "b", "f"]
 };
 
-console.log("Minecraft-BookArt app.js loaded");
+// Browser color equivalents for preview
+const COLOR_MAP = {
+  "0": "#000000",
+  "1": "#0000AA",
+  "2": "#00AA00",
+  "3": "#00AAAA",
+  "4": "#AA0000",
+  "5": "#AA00AA",
+  "6": "#FFAA00",
+  "7": "#AAAAAA",
+  "8": "#555555",
+  "9": "#5555FF",
+  "a": "#55FF55",
+  "b": "#55FFFF",
+  "c": "#FF5555",
+  "d": "#FF55FF",
+  "e": "#FFFF55",
+  "f": "#FFFFFF"
+};
 
 function pixelToChar(v) {
   const idx = Math.round((v / 255) * (ASCII_CHARS.length - 1));
-  return ASCII_CHARS[Math.max(0, Math.min(idx, ASCII_CHARS.length - 1))];
+  return ASCII_CHARS[idx];
 }
 
 function pixelToColorCode(v, paletteKey) {
   const colors = PALETTES[paletteKey] || PALETTES.bw;
   const idx = Math.round((v / 255) * (colors.length - 1));
-  return colors[Math.max(0, Math.min(idx, colors.length - 1))];
+  return colors[idx];
 }
 
 async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
@@ -59,7 +75,6 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
       const char = pixelToChar(gray);
       const colorCode = pixelToColorCode(gray, palette);
 
-      // Only emit a new § code when the color changes
       if (colorCode !== lastColor) {
         row += S + colorCode;
         lastColor = colorCode;
@@ -74,6 +89,30 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
   return lines;
 }
 
+// Convert § codes into HTML spans for preview
+function renderPreview(asciiLines) {
+  let html = "";
+
+  asciiLines.forEach(line => {
+    let currentColor = "#FFFFFF";
+    let out = "";
+
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === S && i + 1 < line.length) {
+        const code = line[i + 1].toLowerCase();
+        currentColor = COLOR_MAP[code] || "#FFFFFF";
+        i++; // skip color code
+      } else {
+        out += `<span style="color:${currentColor}">${line[i]}</span>`;
+      }
+    }
+
+    html += out + "<br>";
+  });
+
+  return html;
+}
+
 document.getElementById("convertBtn").onclick = async () => {
   const file = document.getElementById("fileInput").files[0];
   if (!file) return;
@@ -82,7 +121,13 @@ document.getElementById("convertBtn").onclick = async () => {
 
   try {
     const ascii = await imageToAscii(file, 113, 14, palette);
+
+    // Raw Minecraft output
     document.getElementById("output").textContent = ascii.join("\n");
+
+    // Live colored preview
+    document.getElementById("preview").innerHTML = renderPreview(ascii);
+
   } catch (e) {
     document.getElementById("output").textContent = "Error processing image.";
     console.error(e);
