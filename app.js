@@ -32,17 +32,32 @@ function nearestMinecraftColor(r, g, b) {
 
 // K-means-like clustering into 3 clusters
 function cluster3(pixels) {
-  let centers = [pixels[0], pixels[5] || pixels[0], pixels[10] || pixels[0]];
+  if (pixels.length === 0) return [
+    { r:255, g:255, b:255 },
+    { r:255, g:255, b:255 },
+    { r:255, g:255, b:255 }
+  ];
+
+  let centers = [
+    pixels[0],
+    pixels[Math.min(5, pixels.length - 1)],
+    pixels[Math.min(10, pixels.length - 1)]
+  ];
+
   for (let iter = 0; iter < 4; iter++) {
     const groups = [[], [], []];
+
     for (const p of pixels) {
       let best = 0, bestDist = Infinity;
       for (let i = 0; i < 3; i++) {
-        const d = (p.r - centers[i].r)**2 + (p.g - centers[i].g)**2 + (p.b - centers[i].b)**2;
+        const d = (p.r - centers[i].r)**2 +
+                  (p.g - centers[i].g)**2 +
+                  (p.b - centers[i].b)**2;
         if (d < bestDist) { bestDist = d; best = i; }
       }
       groups[best].push(p);
     }
+
     for (let i = 0; i < 3; i++) {
       if (groups[i].length === 0) continue;
       const avg = groups[i].reduce((a, p) => ({
@@ -55,13 +70,18 @@ function cluster3(pixels) {
       };
     }
   }
+
   return centers;
 }
 
 async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
   const img = new Image();
   img.src = URL.createObjectURL(file);
-  await img.decode();
+
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
+  });
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -104,7 +124,9 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
     const assignments = rowPixels.map(p => {
       let best = 0, bestDist = Infinity;
       for (let i = 0; i < 3; i++) {
-        const d = (p.r - centers[i].r)**2 + (p.g - centers[i].g)**2 + (p.b - centers[i].b)**2;
+        const d = (p.r - centers[i].r)**2 +
+                  (p.g - centers[i].g)**2 +
+                  (p.b - centers[i].b)**2;
         if (d < bestDist) { bestDist = d; best = i; }
       }
       return best;
@@ -133,7 +155,7 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
       regions.splice(smallest, 1);
     }
 
-    // Build Bedrock-safe row with § codes
+    // Build Bedrock row with § codes
     let row = "";
     for (const reg of regions) {
       row += S + mcColors[reg.cluster];
@@ -145,7 +167,7 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
   return lines;
 }
 
-// Unified color preview for both Java and Bedrock
+// Color preview for both Java and Bedrock
 function renderPreview(lines) {
   let html = "";
   for (const line of lines) {
@@ -170,7 +192,7 @@ document.getElementById("convertBtn").onclick = async () => {
   const file = document.getElementById("fileInput").files[0];
   if (!file) return;
 
-  const palette = document.getElementById("palette").value;
+  const palette = document.getElementById("palette").value; // kept for future use
   const mode = document.getElementById("mode").value;
   const { width, height, stretchHeight } = getDimensions(mode);
 
