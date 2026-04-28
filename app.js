@@ -30,18 +30,20 @@ function nearestMinecraftColor(r, g, b) {
   return best;
 }
 
-// K-means-like clustering into 3 clusters
+// Safe 3-cluster (never returns empty clusters)
 function cluster3(pixels) {
-  if (pixels.length === 0) return [
-    { r:255, g:255, b:255 },
-    { r:255, g:255, b:255 },
-    { r:255, g:255, b:255 }
-  ];
+  if (pixels.length < 3) {
+    return [
+      pixels[0] || {r:255,g:255,b:255},
+      pixels[0] || {r:255,g:255,b:255},
+      pixels[0] || {r:255,g:255,b:255}
+    ];
+  }
 
   let centers = [
     pixels[0],
-    pixels[Math.min(5, pixels.length - 1)],
-    pixels[Math.min(10, pixels.length - 1)]
+    pixels[Math.floor(pixels.length/2)],
+    pixels[pixels.length-1]
   ];
 
   for (let iter = 0; iter < 4; iter++) {
@@ -105,6 +107,7 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
       rowPixels.push({ r, g, b, x });
     }
 
+    // JAVA MODE — full per-character color
     if (mode === "java") {
       let row = "", last = null;
       for (let i = 0; i < width; i++) {
@@ -143,7 +146,7 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
     }
     regions.push({ start, end: width-1, cluster: assignments[width-1] });
 
-    // Merge to max 3 regions
+    // Guarantee exactly 3 regions
     while (regions.length > 3) {
       let smallest = 0;
       for (let i = 1; i < regions.length; i++) {
@@ -192,7 +195,7 @@ document.getElementById("convertBtn").onclick = async () => {
   const file = document.getElementById("fileInput").files[0];
   if (!file) return;
 
-  const palette = document.getElementById("palette").value; // kept for future use
+  const palette = document.getElementById("palette").value;
   const mode = document.getElementById("mode").value;
   const { width, height, stretchHeight } = getDimensions(mode);
 
