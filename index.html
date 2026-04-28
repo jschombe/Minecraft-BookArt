@@ -4,8 +4,14 @@
   <meta charset="UTF-8">
   <title>Minecraft Book ASCII Converter</title>
   <style>
-    body { font-family: monospace; padding: 20px; }
-    #output { white-space: pre; border: 1px solid #ccc; padding: 10px; margin-top: 20px; }
+    body { font-family: monospace; padding: 20px; background:#111; color:#eee; }
+    #output, #preview {
+      white-space: pre;
+      border: 1px solid #444;
+      padding: 10px;
+      margin-top: 20px;
+      background:#222;
+    }
     label { margin-left: 10px; }
   </style>
 </head>
@@ -16,7 +22,7 @@
 <input type="file" id="fileInput" accept="image/*">
 <button id="convertBtn">Convert</button>
 
-<label for="palette">Color Palette:</label>
+<label for="palette">Palette:</label>
 <select id="palette">
   <option value="bw">Black & White</option>
   <option value="gray">Grayscale</option>
@@ -25,8 +31,19 @@
   <option value="cool">Cool Tones</option>
 </select>
 
+<label for="mode">Edition:</label>
+<select id="mode">
+  <option value="java">Java (full width)</option>
+  <option value="bedrock">Bedrock (S4 dynamic)</option>
+  <option value="bedrock1">Bedrock (1-char limit)</option>
+</select>
+
+<h3>Minecraft Output</h3>
 <div id="output"></div>
 
-<script src="app.js"></script>
+<h3>Live Book Preview</h3>
+<div id="preview"></div>
+
+<script src="app.js?v=3"></script>
 </body>
 </html>
