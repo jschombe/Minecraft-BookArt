@@ -19,10 +19,9 @@ const COLOR_MAP = {
 };
 
 function getDimensions(mode) {
-  if (mode === "bedrock") {
-    return { width: 16, height: 13 };
-  }
-  return { width: 113, height: 14 }; // Java default
+  return mode === "bedrock"
+    ? { width: 16, height: 13 }
+    : { width: 113, height: 14 };
 }
 
 function pixelToChar(v) {
@@ -30,11 +29,11 @@ function pixelToChar(v) {
 }
 
 function pixelToColorCode(v, paletteKey) {
-  const colors = PALETTES[paletteKey] || PALETTES.bw;
+  const colors = PALETTES[paletteKey];
   return colors[Math.round((v / 255) * (colors.length - 1))];
 }
 
-async function imageToAscii(file, width, height, palette = "bw") {
+async function imageToAscii(file, width, height, palette) {
   const img = new Image();
   img.src = URL.createObjectURL(file);
 
