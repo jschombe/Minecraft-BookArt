@@ -1,13 +1,18 @@
 const ASCII_CHARS = "@%#*+=-:. ";
 
+// Minecraft color code prefix (section sign)
+const S = "\u00A7";
+
 // Minecraft color palettes (dark → light)
 const PALETTES = {
-  bw:   ["§0", "§f"],
-  gray: ["§0","§8","§7","§f"],
-  vivid:["§4","§6","§e","§a","§b","§9","§d","§f"],
-  warm: ["§4","§6","§c","§e","§f"],
-  cool: ["§1","§3","§9","§b","§f"]
+  bw:   [S + "0", S + "f"],
+  gray: [S + "0", S + "8", S + "7", S + "f"],
+  vivid:[S + "4", S + "6", S + "e", S + "a", S + "b", S + "9", S + "d", S + "f"],
+  warm: [S + "4", S + "6", S + "c", S + "e", S + "f"],
+  cool: [S + "1", S + "3", S + "9", S + "b", S + "f"]
 };
+
+console.log("Minecraft-BookArt app.js loaded");
 
 function pixelToChar(v) {
   const idx = Math.round((v / 255) * (ASCII_CHARS.length - 1));
@@ -24,7 +29,6 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
   const img = new Image();
   img.src = URL.createObjectURL(file);
 
-  // More compatible than img.decode() alone
   await new Promise((resolve, reject) => {
     img.onload = () => resolve();
     img.onerror = reject;
