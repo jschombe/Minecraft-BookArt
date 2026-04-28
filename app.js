@@ -95,7 +95,7 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
     const formattingChars = 2;
 
     // 3) Max visible ASCII allowed
-    const maxVisible = 15 - formattingChars; // must keep total < 16
+    const maxVisible = 15 - formattingChars;
 
     // 4) Slice ASCII to fit
     const safeChars = chars.slice(0, maxVisible).join("");
