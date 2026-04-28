@@ -1,7 +1,8 @@
-// LIGHT BACKGROUND ASCII SET (inverted)
+// ASCII ramp for sword pixels only (background = spaces)
 const ASCII_CHARS = ".:-=+*#%@";
 const S = String.fromCharCode(0xA7);
 
+// Minecraft chat color RGB values
 const MC_RGB = {
   "0":[0,0,0],"1":[0,0,170],"2":[0,170,0],"3":[0,170,170],
   "4":[170,0,0],"5":[170,0,170],"6":[255,170,0],"7":[170,170,170],
@@ -50,8 +51,8 @@ async function imageToAscii(file,palette,mode){
 
       const brightness = 0.299*r + 0.587*g + 0.114*b;
 
-      // BACKGROUND REMOVAL
-      if(brightness > 200){
+      // BACKGROUND REMOVAL — aggressive threshold
+      if(brightness > 230){
         chars.push(" "); // background = space
       } else {
         chars.push(pixelToChar(brightness)); // sword pixel
@@ -73,18 +74,22 @@ async function imageToAscii(file,palette,mode){
       continue;
     }
 
-    // BEDROCK — compute average color
+    // BEDROCK MODE — compute average color
     const avg=rowPixels.reduce((a,p)=>({r:a.r+p.r,g:a.g+p.g,b:a.b+p.b}),
                                {r:0,g:0,b:0});
     avg.r/=rowPixels.length; avg.g/=rowPixels.length; avg.b/=rowPixels.length;
     const code=nearestMinecraftColor(avg.r,avg.g,avg.b);
 
-    // BEDROCK S4 dynamic shrink
+    // BEDROCK S4 dynamic shrink (<16 chars)
     const formatting=2;
     const maxVisible=15-formatting;
 
     let row=S+code+chars.slice(0,maxVisible).join("");
-    row=row.replace(/\s+$/,""); // trim trailing spaces
+
+    // Trim trailing spaces
+    row=row.replace(/\s+$/,"");
+
+    // Hard enforce <16 chars
     row=row.slice(0,15);
 
     lines.push(row);
@@ -99,7 +104,7 @@ function renderPreview(lines,mode){
   for(const line of lines){
     let color="#fff",out="";
 
-    if(mode!=="java"){
+    if(mode==="bedrock"){
       const code=line[1];
       const rgb=MC_RGB[code]||[255,255,255];
       color=`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
@@ -110,7 +115,7 @@ function renderPreview(lines,mode){
       continue;
     }
 
-    // JAVA preview
+    // JAVA preview (multi-color)
     for(let i=0;i<line.length;i++){
       if(line[i]===S && i+1<line.length){
         const code=line[i+1];
