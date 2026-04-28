@@ -1,5 +1,5 @@
 const ASCII_CHARS = "@%#*+=-:. ";
-const S = String.fromCharCode(0xA7); // section sign
+const S = String.fromCharCode(0xA7); // section sign (Java only)
 
 // Palettes (dark → light)
 const PALETTES = {
@@ -20,9 +20,9 @@ const COLOR_MAP = {
 
 function getDimensions(mode) {
   if (mode === "bedrock") {
-    return { width: 16, height: 13, stretchHeight: 13 }; // simple, no aspect tricks
+    return { width: 16, height: 13, stretchHeight: 13 };
   }
-  return { width: 113, height: 14, stretchHeight: 14 }; // Java
+  return { width: 113, height: 14, stretchHeight: 14 };
 }
 
 function pixelToChar(v) {
@@ -32,6 +32,31 @@ function pixelToChar(v) {
 function pixelToColorCode(v, paletteKey) {
   const colors = PALETTES[paletteKey] || PALETTES.bw;
   return colors[Math.round((v / 255) * (colors.length - 1))];
+}
+
+// OPTION B — dominant-color-based 3-cluster compression
+function dominantThree(colors) {
+  const freq = {};
+  colors.forEach(c => freq[c] = (freq[c] || 0) + 1);
+
+  const top3 = Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(e => e[0]);
+
+  return colors.map(c => {
+    let best = top3[0];
+    let bestDist = Math.abs(parseInt(c, 16) - parseInt(best, 16));
+
+    for (let t of top3) {
+      const d = Math.abs(parseInt(c, 16) - parseInt(t, 16));
+      if (d < bestDist) {
+        best = t;
+        bestDist = d;
+      }
+    }
+    return best;
+  });
 }
 
 async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
@@ -56,25 +81,33 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
   for (let y = 0; y < height; y++) {
     const srcY = Math.floor((y / height) * stretchHeight);
 
-    let row = "";
-    let lastColor = null;
+    let chars = [];
+    let colors = [];
 
     for (let x = 0; x < width; x++) {
       const i = (srcY * width + x) * 4;
       const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
 
-      const ch = pixelToChar(gray);
+      chars.push(pixelToChar(gray));
+      colors.push(pixelToColorCode(gray, palette));
+    }
 
+    // OPTION B: dominant 3-color clustering
+    colors = dominantThree(colors);
+
+    let row = "";
+    let lastColor = null;
+
+    for (let i = 0; i < width; i++) {
       if (mode === "java") {
-        const colorCode = pixelToColorCode(gray, palette);
-        if (colorCode !== lastColor) {
-          row += S + colorCode;
-          lastColor = colorCode;
+        if (colors[i] !== lastColor) {
+          row += S + colors[i];
+          lastColor = colors[i];
         }
-        row += ch;
+        row += chars[i];
       } else {
-        // Bedrock: plain ASCII only, no § codes
-        row += ch;
+        // BEDROCK: pure ASCII only
+        row += chars[i];
       }
     }
 
@@ -86,13 +119,11 @@ async function imageToAscii(file, width, height, stretchHeight, palette, mode) {
 
 function renderPreview(lines, mode) {
   if (mode === "bedrock") {
-    // Plain ASCII preview
     return lines.join("<br>");
   }
 
-  // Java: colored preview
+  // Java colored preview
   let html = "";
-
   for (const line of lines) {
     let currentColor = "#FFFFFF";
     let out = "";
@@ -106,10 +137,8 @@ function renderPreview(lines, mode) {
         out += `<span style="color:${currentColor}">${line[i]}</span>`;
       }
     }
-
     html += out + "<br>";
   }
-
   return html;
 }
 
