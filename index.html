@@ -4,8 +4,22 @@
   <meta charset="UTF-8">
   <title>Minecraft Book ASCII Converter</title>
   <style>
-    body { font-family: monospace; padding: 20px; }
-    #output { white-space: pre; border: 1px solid #ccc; padding: 10px; margin-top: 20px; }
+    body {
+      font-family: monospace;
+      padding: 20px;
+    }
+    #output {
+      white-space: pre-wrap;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 20px;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.1;
+    }
+    label {
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
@@ -14,6 +28,15 @@
 
 <input type="file" id="fileInput" accept="image/*">
 <button id="convertBtn">Convert</button>
+
+<label for="palette">Color Palette:</label>
+<select id="palette">
+  <option value="bw">Black & White</option>
+  <option value="gray">Grayscale</option>
+  <option value="vivid">Vivid Colors</option>
+  <option value="warm">Warm Tones</option>
+  <option value="cool">Cool Tones</option>
+</select>
 
 <div id="output"></div>
 
