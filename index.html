@@ -2,10 +2,11 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Minecraft Book ASCII Converter</title>
   <style>
     body {
-      font-family: monospace;
+      font-family: Consolas, "Courier New", monospace;
       padding: 20px;
     }
     #output {
@@ -13,9 +14,10 @@
       border: 1px solid #ccc;
       padding: 10px;
       margin-top: 20px;
-      font-family: monospace;
+      font-family: Consolas, "Courier New", monospace;
       font-size: 12px;
       line-height: 1.1;
+      unicode-bidi: plaintext; /* forces literal § rendering */
     }
     label {
       margin-left: 10px;
