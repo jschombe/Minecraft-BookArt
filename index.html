@@ -2,43 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Minecraft ASCII Converter</title>
+  <title>Minecraft ASCII Converter (Bedrock-Safe)</title>
   <style>
-    body { font-family: sans-serif; background:#111; color:#eee; }
-    .row { margin-bottom: 8px; }
-    #preview { background:#222; padding:8px; margin-top:8px; line-height:1; }
-    #output { width:100%; height:200px; margin-top:8px; }
-    label { margin-right:8px; }
+    body { font-family: sans-serif; background:#111; color:#eee; padding:20px; }
+    #preview { background:#222; padding:10px; margin-top:10px; line-height:1; }
+    #output { width:100%; height:200px; margin-top:10px; }
+    label { margin-right:10px; }
   </style>
 </head>
 <body>
+
   <h1>Minecraft ASCII Converter</h1>
 
-  <div class="row">
-    <label for="fileInput">Image:</label>
+  <div>
+    <label>Image:</label>
     <input type="file" id="fileInput" accept="image/*">
   </div>
 
-  <div class="row">
-    <label for="palette">Palette:</label>
+  <div style="margin-top:10px;">
+    <label>Palette:</label>
     <select id="palette">
       <option value="Color">Color</option>
-      <option value="Black &amp; White">Black &amp; White</option>
+      <option value="Black & White">Black & White</option>
     </select>
 
-    <label for="mode">Mode:</label>
+    <label style="margin-left:20px;">Edition:</label>
     <select id="mode">
-      <option value="bedrock">Bedrock</option>
+      <option value="bedrock">Bedrock (S4 Safe)</option>
       <option value="java">Java</option>
     </select>
 
-    <button id="convertBtn">Convert</button>
+    <button id="convertBtn" style="margin-left:20px;">Convert</button>
   </div>
 
-  <h2>Preview</h2>
+  <h2>Live Color Preview</h2>
   <div id="preview"></div>
 
-  <h2>Raw Output</h2>
+  <h2>Minecraft Output</h2>
   <textarea id="output" readonly></textarea>
 
   <script src="app.js"></script>
