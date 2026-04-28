@@ -1,9 +1,9 @@
 const ASCII_CHARS = "@%#*+=-:. ";
 
-// Minecraft section sign
+// Minecraft section sign (ALWAYS use Unicode escape)
 const S = "\u00A7";
 
-// Palettes now store just the color *codes* (0–9, a–f)
+// Palettes store only the color code (0–9, a–f)
 const PALETTES = {
   bw:   ["0", "f"],
   gray: ["0", "8", "7", "f"],
@@ -30,7 +30,7 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
   img.src = URL.createObjectURL(file);
 
   await new Promise((resolve, reject) => {
-    img.onload = () => resolve();
+    img.onload = resolve;
     img.onerror = reject;
   });
 
@@ -43,9 +43,10 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
   const data = ctx.getImageData(0, 0, width, height).data;
 
   let lines = [];
+
   for (let y = 0; y < height; y++) {
     let row = "";
-    let lastColorCode = null;
+    let lastColor = null;
 
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
@@ -58,16 +59,18 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
       const char = pixelToChar(gray);
       const colorCode = pixelToColorCode(gray, palette);
 
-      // Only emit a new color code when it changes
-      if (colorCode !== lastColorCode) {
+      // Only emit a new § code when the color changes
+      if (colorCode !== lastColor) {
         row += S + colorCode;
-        lastColorCode = colorCode;
+        lastColor = colorCode;
       }
 
       row += char;
     }
+
     lines.push(row);
   }
+
   return lines;
 }
 
