@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Minecraft ASCII Converter (Bedrock-Safe)</title>
+  <title>Minecraft ASCII Converter</title>
   <style>
     body { font-family: sans-serif; background:#111; color:#eee; padding:20px; }
     #preview { background:#222; padding:10px; margin-top:10px; line-height:1; }
@@ -12,15 +12,15 @@
 </head>
 <body>
 
-  <h1>Minecraft ASCII Converter</h1>
+  <h1>Image → ASCII (Minecraft Book)</h1>
 
   <div>
-    <label>Image:</label>
+    <label>Choose File:</label>
     <input type="file" id="fileInput" accept="image/*">
   </div>
 
   <div style="margin-top:10px;">
-    <label>Palette:</label>
+    <label>Color Palette:</label>
     <select id="palette">
       <option value="Color">Color</option>
       <option value="Black & White">Black & White</option>
@@ -35,12 +35,14 @@
     <button id="convertBtn" style="margin-left:20px;">Convert</button>
   </div>
 
+  <h2>Minecraft Output (copy this into your book)</h2>
+  <textarea id="output" readonly></textarea>
+
   <h2>Live Color Preview</h2>
   <div id="preview"></div>
 
-  <h2>Minecraft Output</h2>
-  <textarea id="output" readonly></textarea>
+  <!-- IMPORTANT: This is the ONLY script now -->
+  <script src="app.js?v=2"></script>
 
-  <script src="app.js"></script>
 </body>
 </html>
