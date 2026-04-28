@@ -1,7 +1,5 @@
 const ASCII_CHARS = "@%#*+=-:. ";
-
-// FORCE the section sign using raw byte, not Unicode
-const S = String.fromCharCode(0xA7);
+const S = String.fromCharCode(0xA7); // section sign
 
 // Palettes (dark → light)
 const PALETTES = {
@@ -20,16 +18,23 @@ const COLOR_MAP = {
   "c": "#FF5555", "d": "#FF55FF", "e": "#FFFF55", "f": "#FFFFFF"
 };
 
+function getDimensions(mode) {
+  if (mode === "bedrock") {
+    return { width: 16, height: 13 };
+  }
+  return { width: 113, height: 14 }; // Java default
+}
+
 function pixelToChar(v) {
   return ASCII_CHARS[Math.round((v / 255) * (ASCII_CHARS.length - 1))];
 }
 
 function pixelToColorCode(v, paletteKey) {
-  const colors = PALETTES[paletteKey];
+  const colors = PALETTES[paletteKey] || PALETTES.bw;
   return colors[Math.round((v / 255) * (colors.length - 1))];
 }
 
-async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
+async function imageToAscii(file, width, height, palette = "bw") {
   const img = new Image();
   img.src = URL.createObjectURL(file);
 
@@ -60,7 +65,7 @@ async function imageToAscii(file, width = 113, height = 14, palette = "bw") {
       const colorCode = pixelToColorCode(gray, palette);
 
       if (colorCode !== lastColor) {
-        row += S + colorCode;   // GUARANTEED section sign
+        row += S + colorCode;
         lastColor = colorCode;
       }
 
@@ -101,8 +106,10 @@ document.getElementById("convertBtn").onclick = async () => {
   if (!file) return;
 
   const palette = document.getElementById("palette").value;
+  const mode = document.getElementById("mode").value;
+  const { width, height } = getDimensions(mode);
 
-  const ascii = await imageToAscii(file, 113, 14, palette);
+  const ascii = await imageToAscii(file, width, height, palette);
 
   document.getElementById("output").textContent = ascii.join("\n");
   document.getElementById("preview").innerHTML = renderPreview(ascii);
