@@ -2,7 +2,6 @@
 const ASCII_CHARS = ".:-=+*#%@";
 const S = String.fromCharCode(0xA7);
 
-// Minecraft chat color RGB values
 const MC_RGB = {
   "0":[0,0,0],"1":[0,0,170],"2":[0,170,0],"3":[0,170,170],
   "4":[170,0,0],"5":[170,0,170],"6":[255,170,0],"7":[170,170,170],
@@ -25,72 +24,76 @@ function nearestMinecraftColor(r,g,b){
 }
 
 async function imageToAscii(file,palette,mode){
-  const img=new Image();
-  img.src=URL.createObjectURL(file);
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
   await img.decode();
 
-  const width = mode==="java" ? 113 : 16;
-  const height = mode==="java" ? 14 : 13;
+  const width  = (mode === "java") ? 113 : 16;
+  const height = (mode === "java") ? 14  : 13;
 
-  const canvas=document.createElement("canvas");
-  canvas.width=width;
-  canvas.height=height;
-  const ctx=canvas.getContext("2d");
-  ctx.drawImage(img,0,0,width,height);
+  const canvas = document.createElement("canvas");
+  canvas.width  = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, width, height);
 
-  const data=ctx.getImageData(0,0,width,height).data;
-  const lines=[];
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const lines = [];
 
-  for(let y=0;y<height;y++){
-    const rowPixels=[];
-    const chars=[];
+  for(let y = 0; y < height; y++){
+    const rowPixels = [];
+    const chars = [];
 
-    for(let x=0;x<width;x++){
-      const i=(y*width+x)*4;
-      let r=data[i],g=data[i+1],b=data[i+2];
+    for(let x = 0; x < width; x++){
+      const i = (y * width + x) * 4;
+      let r = data[i], g = data[i+1], b = data[i+2];
 
       const brightness = 0.299*r + 0.587*g + 0.114*b;
 
-      // BACKGROUND REMOVAL — aggressive threshold
-      if(brightness > 230){
-        chars.push(" "); // background = space
+      // BACKGROUND REMOVAL for BOTH Java and Bedrock
+      if (brightness > 230) {
+        chars.push(" ");          // background = space
       } else {
-        chars.push(pixelToChar(brightness)); // sword pixel
+        chars.push(pixelToChar(brightness)); // sword / foreground
       }
 
-      rowPixels.push({r,g,b});
+      rowPixels.push({ r, g, b });
     }
 
-    // JAVA MODE (full color transitions)
-    if(mode==="java"){
-      let row="",last=null;
-      for(let i=0;i<width;i++){
-        const {r,g,b}=rowPixels[i];
-        const code=nearestMinecraftColor(r,g,b);
-        if(code!==last){row+=S+code;last=code;}
-        row+=chars[i];
+    // JAVA MODE (multi-color, but background still spaces)
+    if (mode === "java") {
+      let row = "", last = null;
+      for (let i = 0; i < width; i++) {
+        const { r, g, b } = rowPixels[i];
+        const code = nearestMinecraftColor(r, g, b);
+        if (code !== last) { row += S + code; last = code; }
+        row += chars[i];
       }
       lines.push(row);
       continue;
     }
 
-    // BEDROCK MODE — compute average color
-    const avg=rowPixels.reduce((a,p)=>({r:a.r+p.r,g:a.g+p.g,b:a.b+p.b}),
-                               {r:0,g:0,b:0});
-    avg.r/=rowPixels.length; avg.g/=rowPixels.length; avg.b/=rowPixels.length;
-    const code=nearestMinecraftColor(avg.r,avg.g,avg.b);
+    // BEDROCK MODE — single color per line, <16 chars
+    const avg = rowPixels.reduce(
+      (a,p) => ({ r:a.r+p.r, g:a.g+p.g, b:a.b+p.b }),
+      { r:0, g:0, b:0 }
+    );
+    avg.r /= rowPixels.length;
+    avg.g /= rowPixels.length;
+    avg.b /= rowPixels.length;
 
-    // BEDROCK S4 dynamic shrink (<16 chars)
-    const formatting=2;
-    const maxVisible=15-formatting;
+    const code = nearestMinecraftColor(avg.r, avg.g, avg.b);
 
-    let row=S+code+chars.slice(0,maxVisible).join("");
+    const formatting = 2;              // § + code
+    const maxVisible = 15 - formatting;
 
-    // Trim trailing spaces
-    row=row.replace(/\s+$/,"");
+    let row = S + code + chars.slice(0, maxVisible).join("");
 
-    // Hard enforce <16 chars
-    row=row.slice(0,15);
+    // trim trailing spaces
+    row = row.replace(/\s+$/,"");
+
+    // hard enforce <16 chars
+    row = row.slice(0, 15);
 
     lines.push(row);
   }
@@ -98,48 +101,48 @@ async function imageToAscii(file,palette,mode){
   return lines;
 }
 
-// PREVIEW — Bedrock uses ONE color per line
-function renderPreview(lines,mode){
-  let html="";
-  for(const line of lines){
-    let color="#fff",out="";
+// Preview: Bedrock = one color per line, Java = multi-color
+function renderPreview(lines, mode){
+  let html = "";
+  for (const line of lines) {
+    let color = "#000000", out = "";
 
-    if(mode==="bedrock"){
-      const code=line[1];
-      const rgb=MC_RGB[code]||[255,255,255];
-      color=`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    if (mode === "bedrock") {
+      const code = line[1];
+      const rgb = MC_RGB[code] || [0,0,0];
+      color = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 
-      const visible=line.replace(/§./g,"");
-      out+=`<span style="color:${color}">${visible}</span>`;
-      html+=out+"<br>";
+      const visible = line.replace(/§./g, "");
+      out += `<span style="color:${color}">${visible}</span>`;
+      html += out + "<br>";
       continue;
     }
 
-    // JAVA preview (multi-color)
-    for(let i=0;i<line.length;i++){
-      if(line[i]===S && i+1<line.length){
-        const code=line[i+1];
-        const rgb=MC_RGB[code]||[255,255,255];
-        color=`rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    // JAVA preview
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === S && i+1 < line.length) {
+        const code = line[i+1];
+        const rgb = MC_RGB[code] || [0,0,0];
+        color = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
         i++;
       } else {
-        out+=`<span style="color:${color}">${line[i]}</span>`;
+        out += `<span style="color:${color}">${line[i]}</span>`;
       }
     }
-    html+=out+"<br>";
+    html += out + "<br>";
   }
   return html;
 }
 
-document.getElementById("convertBtn").onclick=async()=>{
-  const file=document.getElementById("fileInput").files[0];
-  if(!file) return;
+document.getElementById("convertBtn").onclick = async () => {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) return;
 
-  const palette=document.getElementById("palette").value;
-  const mode=document.getElementById("mode").value;
+  const palette = document.getElementById("palette").value;
+  const mode    = document.getElementById("mode").value;
 
-  const ascii=await imageToAscii(file,palette,mode);
+  const ascii = await imageToAscii(file, palette, mode);
 
-  document.getElementById("output").textContent=ascii.join("\n");
-  document.getElementById("preview").innerHTML=renderPreview(ascii,mode);
+  document.getElementById("output").textContent = ascii.join("\n");
+  document.getElementById("preview").innerHTML  = renderPreview(ascii, mode);
 };
