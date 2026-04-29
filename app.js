@@ -42,6 +42,7 @@ async function imageToAscii(file,palette,mode){
   for(let y=0;y<height;y++){
     const rowPixels=[];
     const chars=[];
+    const fgPixels=[]; // non-background pixels for Bedrock color
 
     for(let x=0;x<width;x++){
       const i=(y*width+x)*4;
@@ -49,17 +50,18 @@ async function imageToAscii(file,palette,mode){
 
       const brightness = 0.299*r + 0.587*g + 0.114*b;
 
-      // BACKGROUND REMOVAL FOR BOTH JAVA + BEDROCK
+      // background removal for BOTH Java + Bedrock
       if(brightness > 230){
         chars.push(" ");
       } else {
         chars.push(pixelToChar(brightness));
+        fgPixels.push({r,g,b});
       }
 
       rowPixels.push({r,g,b});
     }
 
-    // JAVA MODE
+    // JAVA MODE (multi-color, background still spaces)
     if(mode==="java"){
       let row="",last=null;
       for(let i=0;i<width;i++){
@@ -72,12 +74,20 @@ async function imageToAscii(file,palette,mode){
       continue;
     }
 
-    // BEDROCK MODE — single color per line
-    const avg=rowPixels.reduce((a,p)=>({r:a.r+p.r,g:a.g+p.g,b:a.b+p.b}),
-                               {r:0,g:0,b:0});
-    avg.r/=rowPixels.length;
-    avg.g/=rowPixels.length;
-    avg.b/=rowPixels.length;
+    // BEDROCK MODE — choose color from NON-BACKGROUND pixels
+    let avg;
+    if(fgPixels.length>0){
+      avg=fgPixels.reduce(
+        (a,p)=>({r:a.r+p.r,g:a.g+p.g,b:a.b+p.b}),
+        {r:0,g:0,b:0}
+      );
+      avg.r/=fgPixels.length;
+      avg.g/=fgPixels.length;
+      avg.b/=fgPixels.length;
+    } else {
+      // fallback: whole row (all spaces)
+      avg={r:255,g:255,b:255};
+    }
 
     const code=nearestMinecraftColor(avg.r,avg.g,avg.b);
 
